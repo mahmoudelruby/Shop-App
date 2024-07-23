@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shopping_app/model/category.dart';
 import 'package:shopping_app/model/stand.dart';
-import 'package:shopping_app/service/category/category_service.dart';
 import 'package:shopping_app/model/product.dart';
-import 'package:shopping_app/service/product/product_service.dart';
-import 'package:shopping_app/service/stand/stand_service.dart';
+import 'package:shopping_app/service/category/category_provider.dart';
+import 'package:shopping_app/service/product/product_provider.dart';
+import 'package:shopping_app/service/stand/stand_provider.dart';
 import 'package:shopping_app/view/category_page.dart';
-// Import the CategoryScreen
 
 class ProductScreen extends StatefulWidget {
   final int categoryId;
@@ -18,9 +18,6 @@ class ProductScreen extends StatefulWidget {
 }
 
 class _ProductScreenState extends State<ProductScreen> {
-  late Future<List<Product>> futureProducts;
-  late Future<List<Category>> futureCategories;
-  late Future<List<Stand>> futureStands;
   int? selectedCategoryId;
   int? selectedStandId;
 
@@ -28,25 +25,27 @@ class _ProductScreenState extends State<ProductScreen> {
   void initState() {
     super.initState();
     selectedCategoryId = widget.categoryId;
-    futureProducts =
-        ProductService().fetchProducts(2, selectedCategoryId!, 0, 0, 10);
-    futureCategories = CategoryService().fetchCategories(2);
-    futureStands = StandService().fetchStands(2, selectedCategoryId!);
+    Provider.of<ProductProvider>(context, listen: false)
+        .fetchProducts(2, selectedCategoryId!, 0, 0, 10);
+    Provider.of<CategoryProvider>(context, listen: false).fetchCategories(2);
+    Provider.of<StandProvider>(context, listen: false)
+        .fetchStands(2, selectedCategoryId!);
   }
 
   void _onCategorySelected(int categoryId) {
     setState(() {
       selectedCategoryId = categoryId;
-      futureProducts =
-          ProductService().fetchProducts(2, selectedCategoryId!, 0, 0, 10);
-      futureStands = StandService().fetchStands(2, selectedCategoryId!);
+      Provider.of<ProductProvider>(context, listen: false)
+          .fetchProducts(2, selectedCategoryId!, 0, 0, 10);
+      Provider.of<StandProvider>(context, listen: false)
+          .fetchStands(2, selectedCategoryId!);
     });
   }
 
   void _onStandSelected(int standId) {
     setState(() {
       selectedStandId = standId;
-      futureProducts = ProductService()
+      Provider.of<ProductProvider>(context, listen: false)
           .fetchProducts(2, selectedCategoryId!, standId, 0, 10);
     });
   }
@@ -66,18 +65,19 @@ class _ProductScreenState extends State<ProductScreen> {
       body: Column(
         children: [
           SizedBox(height: 40),
-          FutureBuilder<List<Category>>(
-            future: futureCategories,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          Consumer<CategoryProvider>(
+            builder: (context, categoryProvider, child) {
+              if (categoryProvider.isLoading) {
                 return const LinearProgressIndicator();
-              } else if (snapshot.hasError) {
-                print('Error fetching categories: ${snapshot.error}');
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              } else if (categoryProvider.errorMessage != null) {
+                print(
+                    'Error fetching categories: ${categoryProvider.errorMessage}');
+                return Center(
+                    child: Text('Error: ${categoryProvider.errorMessage}'));
+              } else if (categoryProvider.categories.isEmpty) {
                 return const Center(child: Text('No categories found'));
               } else {
-                List<Category> categories = snapshot.data!;
+                List<Category> categories = categoryProvider.categories;
                 return Container(
                   height: 50,
                   color: Colors.red,
@@ -142,18 +142,18 @@ class _ProductScreenState extends State<ProductScreen> {
               }
             },
           ),
-          FutureBuilder<List<Stand>>(
-            future: futureStands,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
+          Consumer<StandProvider>(
+            builder: (context, standProvider, child) {
+              if (standProvider.isLoading) {
                 return const LinearProgressIndicator();
-              } else if (snapshot.hasError) {
-                print('Error fetching stands: ${snapshot.error}');
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              } else if (standProvider.errorMessage != null) {
+                print('Error fetching stands: ${standProvider.errorMessage}');
+                return Center(
+                    child: Text('Error: ${standProvider.errorMessage}'));
+              } else if (standProvider.stands.isEmpty) {
                 return const Center(child: Text('No stands found'));
               } else {
-                List<Stand> stands = snapshot.data!;
+                List<Stand> stands = standProvider.stands;
                 return Container(
                   height: 60,
                   child: ListView.builder(
@@ -202,18 +202,19 @@ class _ProductScreenState extends State<ProductScreen> {
             },
           ),
           Expanded(
-            child: FutureBuilder<List<Product>>(
-              future: futureProducts,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            child: Consumer<ProductProvider>(
+              builder: (context, productProvider, child) {
+                if (productProvider.isLoading) {
                   return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  print('Error fetching products: ${snapshot.error}');
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                } else if (productProvider.errorMessage != null) {
+                  print(
+                      'Error fetching products: ${productProvider.errorMessage}');
+                  return Center(
+                      child: Text('Error: ${productProvider.errorMessage}'));
+                } else if (productProvider.products.isEmpty) {
                   return const Center(child: Text('No products found'));
                 } else {
-                  List<Product> products = snapshot.data!;
+                  List<Product> products = productProvider.products;
                   return GridView.builder(
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(

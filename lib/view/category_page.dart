@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shopping_app/model/category.dart';
-import 'package:shopping_app/service/category/category_service.dart';
+import 'package:shopping_app/service/category/category_provider.dart';
+
 import 'package:shopping_app/view/product_page.dart';
-// Import the ProductScreen
 
 class CategoryScreen extends StatefulWidget {
   @override
@@ -10,12 +11,10 @@ class CategoryScreen extends StatefulWidget {
 }
 
 class _CategoryScreenState extends State<CategoryScreen> {
-  late Future<List<Category>> futureCategories;
-
   @override
   void initState() {
     super.initState();
-    futureCategories = CategoryService().fetchCategories(2);
+    Provider.of<CategoryProvider>(context, listen: false).fetchCategories(2);
   }
 
   @override
@@ -24,28 +23,27 @@ class _CategoryScreenState extends State<CategoryScreen> {
       appBar: AppBar(
         title: const Text('All Categories'),
       ),
-      body: FutureBuilder<List<Category>>(
-        future: futureCategories,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: Consumer<CategoryProvider>(
+        builder: (context, categoryProvider, child) {
+          if (categoryProvider.isLoading) {
             return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          } else if (categoryProvider.errorMessage != null) {
+            return Center(
+                child: Text('Error: ${categoryProvider.errorMessage}'));
+          } else if (categoryProvider.categories.isEmpty) {
             return const Center(child: Text('No categories found'));
           } else {
-            List<Category> categories = snapshot.data!;
+            List<Category> categories = categoryProvider.categories;
             return GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 2 / 3,
+                childAspectRatio: 3 / 4,
               ),
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 Category category = categories[index];
                 return GestureDetector(
                   onTap: () {
-                    // Navigate to the ProductScreen when a category is tapped
                     Navigator.push(
                       context,
                       MaterialPageRoute(
